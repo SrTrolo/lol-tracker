@@ -8,7 +8,11 @@
 # "region" is optional; default_region is used when it's missing.
 # Valid regions: euw, eune, tr, ru, me, na, br, lan, las, kr, jp, oce, sg, tw, vn, ph, th
 players:
-  - name: "ExamplePlayer"
+  - name: "Player1"
+    tag: "EUW"
+  - name: "Player2"
+    tag: "EUW"
+  - name: "Player3"
     tag: "EUW"
   # - name: "AnotherFriend"
   #   tag: "1234"
@@ -42,6 +46,14 @@ matches_per_check: 5
 # If the folder is empty, the card is sent without a meme.
 memes:
   enabled: true
+
+# Who gets a notification: these roles / people are @mentioned with every card.
+# Nobody else is pinged (set the server's default notifications to "Only @mentions").
+# To get an ID: Discord → User Settings → Advanced → Developer Mode, then
+# right-click the role (or person) → Copy ID. Keep the quotes.
+mentions:
+  roles: ["1564703848948437072"]   # Lig o leiens
+  users: []
 
 # Message text. One is picked at random.
 # Variables: {player} {queue} {champion} {kda} {position} {duration}

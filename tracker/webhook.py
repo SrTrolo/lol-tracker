@@ -6,6 +6,7 @@ import io
 import json
 import logging
 import time
+from collections.abc import Sequence
 from pathlib import Path
 
 import requests
@@ -18,11 +19,18 @@ CONTENT_TYPES = {".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg
                  ".webp": "image/webp", ".gif": "image/gif"}
 
 
-def send(webhook_url: str, text: str, card: Image.Image, meme: Path | None = None) -> None:
-    """Post the card, then the meme (if any) as a separate message right after it."""
+def send(webhook_url: str, text: str, card: Image.Image, meme: Path | None = None,
+         roles: Sequence[str] = (), users: Sequence[str] = ()) -> None:
+    """Post the card, then the meme (if any) as a separate message right after it.
+
+    Only the given roles / users are pinged (once, with the card); any other mention stays silent.
+    """
+    pings = " ".join([f"<@&{r}>" for r in roles] + [f"<@{u}>" for u in users])
+    content = f"{pings} {text}" if pings else text
+    allowed = {"parse": [], "roles": list(roles), "users": list(users)}
     buf = io.BytesIO()
     card.save(buf, "PNG", optimize=True)
-    _post(webhook_url, {"content": text, "allowed_mentions": {"parse": []}},
+    _post(webhook_url, {"content": content, "allowed_mentions": allowed},
           {"files[0]": ("card.png", buf.getvalue(), "image/png")})
 
     if meme is None:

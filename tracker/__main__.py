@@ -78,6 +78,13 @@ def load_config(path: Path) -> dict:
     for p in cfg["players"]:
         if not p.get("name") or not p.get("tag"):
             sys.exit(f"config.yaml: every player needs a name and a tag (problem with: {p})")
+
+    cfg["mentions"] = cfg.get("mentions") or {}
+    for kind in ("roles", "users"):
+        ids = [str(i).strip() for i in cfg["mentions"].get(kind) or []]
+        if not all(i.isdigit() for i in ids):
+            sys.exit(f"config.yaml: mentions.{kind} must be Discord IDs (numbers), e.g. \"123456789012345678\"")
+        cfg["mentions"][kind] = ids
     return cfg
 
 
@@ -139,7 +146,8 @@ def post(m: MatchData, cfg: dict, dd: DataDragon, dry_run: bool) -> None:
         img.save(path)
         log.info("[dry run] %s → %s %s", text, path.name, f"+ {meme.name}" if meme else "")
         return
-    webhook.send(os.environ["DISCORD_WEBHOOK_URL"], text, img, meme)
+    webhook.send(os.environ["DISCORD_WEBHOOK_URL"], text, img, meme,
+                 cfg["mentions"]["roles"], cfg["mentions"]["users"])
     log.info("Sent: %s", text)
 
 

@@ -74,6 +74,7 @@ From then on it runs on its own every ~10 minutes.
 | `language` | `es` / `en` | Card language |
 | `timezone` | e.g. `Europe/Madrid` | Time shown on the card |
 | `messages` | lists of texts | Message posted with the card; one is picked at random. Variables: `{player}` `{queue}` `{champion}` `{kda}` `{position}` `{duration}` |
+| `mentions` | `roles` / `users`: lists of Discord IDs | Pinged with every card; nobody else gets notified (see [Notifications](#notifications)) |
 
 ## Memes
 Put images in `memes/win/` and `memes/loss/` (upload them on GitHub with **Add file → Upload files** inside each folder).
@@ -81,6 +82,16 @@ Put images in `memes/win/` and `memes/loss/` (upload them on GitHub with **Add f
 - **PNG / JPG / WEBP / GIF**, max 10 MB.
 - The meme is sent as its own message right after the card, so both show at full size.
 - One is picked at random each time. Empty folder = no meme.
+
+## Notifications
+Posts don't ping anyone unless you list them in `mentions`. To notify only some people:
+1. Create a role (e.g. `@LoL`), turn on **Allow anyone to @mention this role** and give it to whoever wants the notifications.
+2. Enable **Developer Mode** (User Settings → Advanced), right-click the role → **Copy Role ID** and add it to `config.yaml`:
+   ```yaml
+   mentions:
+     roles: ["123456789012345678"]
+   ```
+3. In the server settings, set the default notifications to **Only @mentions**, so the rest of the server isn't notified of every post.
 
 ## Testing on your PC (optional)
 Requires Python 3.10+.
