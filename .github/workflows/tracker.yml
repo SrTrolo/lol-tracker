@@ -1,0 +1,53 @@
+name: LoL tracker
+
+on:
+  schedule:
+    # Every 10 minutes (offset from :00, which is GitHub's busiest minute)
+    - cron: "4-59/10 * * * *"
+  workflow_dispatch:
+    inputs:
+      test_riot_id:
+        description: "Optional: post this player's latest match right now (Name#TAG)"
+        required: false
+        default: ""
+
+permissions:
+  contents: write   # needed to save state.json back to the repo
+
+concurrency:
+  group: lol-tracker
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Check for new matches
+        env:
+          RIOT_API_KEY: ${{ secrets.RIOT_API_KEY }}
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          TEST_RIOT_ID: ${{ inputs.test_riot_id }}
+        run: python -m tracker
+
+      - name: Save state
+        if: always()
+        run: |
+          if [ -n "$(git status --porcelain state.json)" ]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add state.json
+            git commit -m "Update tracker state"
+            git pull --rebase --quiet
+            git push --quiet
+          fi
