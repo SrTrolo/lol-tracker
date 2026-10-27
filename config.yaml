@@ -37,9 +37,8 @@ language: es
 # How many recent matches per queue are checked on each run
 matches_per_check: 5
 
-# Memes: drop images into memes/win and memes/loss.
-#  - PNG / JPG / WEBP → embedded inside the card
-#  - GIF              → sent as a separate attachment next to the card
+# Memes: drop PNG / JPG / WEBP / GIF files into memes/win and memes/loss.
+# A random one is sent as a separate message right after the card.
 # If the folder is empty, the card is sent without a meme.
 memes:
   enabled: true

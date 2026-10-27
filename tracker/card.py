@@ -16,9 +16,7 @@ FONTS = ROOT / "fonts"
 
 W, H = 1200, 560
 PAD = 48
-# Meme panel: top-right area, above the stats row (same layout with or without a meme)
-MEME_BOX = (790, 34, W - 34, 428)   # left, top, right, bottom
-TEXT_RIGHT = MEME_BOX[0] - 30       # text never goes past this point
+TEXT_RIGHT = 760   # text never goes past this point, so the splash art shows on the right
 
 WHITE = (245, 246, 250)
 GREY = (176, 182, 198)
@@ -124,59 +122,73 @@ def _placeholder_icon(name: str, size: int, accent) -> Image.Image:
 
 # ───────────────────────── position icon ─────────────────────────
 
+# Shapes of the League client role icons, on its 34×34 grid. A segment is a point (x, y)
+# or a cubic curve ((x1, y1), (x2, y2), (x, y)). "dim" is the rest of the map, drawn faded.
+POSITION_SHAPES = {
+    "TOP": {
+        "lit": [[(4, 4), (4, 28), (9, 23), (9, 9), (23, 9), (28, 4)]],
+        "dim": [[(14, 14), (21, 14), (21, 21), (14, 21)],
+                [(26, 11), (26, 26), (11, 26), (7, 30), (30, 30), (30, 7)]],
+    },
+    "JUNGLE": {
+        "lit": [[(25, 3), ((22.9, 6.3), (19.9, 9.9), (18, 14.5)), (20, 20), (21, 17),
+                 ((21, 12), (22.9, 8.3), (25, 3))],
+                [(13, 20), ((11.5, 15.5), (8.2, 13), (4, 11)), ((7.9, 14.1), (8.4, 18.5), (9, 23)), (12.7, 26.3),
+                 ((14.2, 27.9), (16.5, 30.5), (17, 31)), ((21.6, 21.6), (13.6, 10.2), (9, 3)),
+                 ((11.7, 9.6), (13.7, 13.3), (13, 20))],
+                [(21, 25), (21, 27), (25, 23), ((25.6, 18.5), (26.1, 14.1), (30, 11)),
+                 ((24.7, 13.5), (22.1, 18.9), (21, 25))]],
+    },
+    "MIDDLE": {
+        "lit": [[(25, 4), (4, 25), (4, 30), (9, 30), (30, 9), (30, 4)]],
+        "dim": [[(30, 13), (26, 17), (26, 26), (17, 26), (13, 30), (30, 30)],
+                [(17, 8), (21, 4), (4, 4), (4, 21), (8, 17), (8, 8)]],
+    },
+    "BOTTOM": {
+        "lit": [[(30, 6), (25, 11), (25, 25), (11, 25), (6, 30), (30, 30)]],
+        "dim": [[(13, 13), (20, 13), (20, 20), (13, 20)],
+                [(4, 4), (4, 27), (8, 23), (8, 8), (23, 8), (27, 4)]],
+    },
+    "UTILITY": {
+        "lit": [[(22, 5), (20.8, 3), (13.1, 3), (12, 5), (17, 11)],
+                [(17, 14), (16, 13), (13, 28), (17, 31), (21, 28), (18, 13)],
+                [(11, 9), (0, 9), ((0, 9), (4.5, 13), (8, 13)), (10, 13), (7, 17), (12, 19), (14, 12)],
+                [(23, 9), (34, 9), ((34, 9), (29.5, 13), (26, 13)), (24, 13), (27, 17), (22, 19), (20, 12)]],
+    },
+}
+
+
+def _outline(segments, steps: int = 12) -> list[tuple[float, float]]:
+    """Points of a closed shape, sampling its curves."""
+    points = []
+    for seg in segments:
+        if isinstance(seg[0], tuple):
+            p0, (p1, p2, p3) = points[-1], seg
+            for i in range(1, steps + 1):
+                t = i / steps
+                a, b, c, d = (1 - t) ** 3, 3 * (1 - t) ** 2 * t, 3 * (1 - t) * t ** 2, t ** 3
+                points.append(tuple(a * p0[k] + b * p1[k] + c * p2[k] + d * p3[k] for k in (0, 1)))
+        else:
+            points.append(seg)
+    return points
+
+
 def position_icon(position: str, size: int, color, dim=(95, 100, 116)) -> Image.Image:
-    """Mini-map with the matching lane highlighted (drawn in code, no external images)."""
+    """The role icon from the League client, drawn flat in the card colours (no external images)."""
     scale = 4
-    s = size * scale
-    img = Image.new("RGBA", (s, s), (0, 0, 0, 0))
+    k = size * scale / 34
+    img = Image.new("RGBA", (size * scale, size * scale), (0, 0, 0, 0))
     d = ImageDraw.Draw(img)
-    a, b = int(s * 0.16), s - int(s * 0.16)   # map edges
-    w = int(s * 0.085)                        # line width
-    gap = int(s * 0.13)
-
-    top = [(a, b - gap), (a, a), (b - gap, a)]
-    bot = [(a + gap, b), (b, b), (b, a + gap)]
-    mid = [(a + int(s * 0.2), b - int(s * 0.2)), (b - int(s * 0.2), a + int(s * 0.2))]
-
-    def line(points, c):
-        d.line(points, fill=c, width=w, joint="curve")
-        for x, y in (points[0], points[-1]):
-            d.ellipse((x - w / 2, y - w / 2, x + w / 2, y + w / 2), fill=c)
-
-    lane = {"TOP": "top", "JUNGLE": "jg", "MIDDLE": "mid", "BOTTOM": "bot", "UTILITY": "sup"}.get(position, "")
-    line(top, color if lane == "top" else dim)
-    line(bot, color if lane in ("bot", "sup") else dim)
-    line(mid, color if lane == "mid" else dim)
-
-    if lane == "jg":  # two "camps", one on each side of mid
-        r = int(s * 0.09)
-        for cx, cy in ((a + int(s * 0.25), a + int(s * 0.25)), (b - int(s * 0.25), b - int(s * 0.25))):
-            d.ellipse((cx - r, cy - r, cx + r, cy + r), fill=color)
-    if lane == "sup":  # a small "heal" cross next to bot lane
-        cx = cy = int(s * 0.68)
-        arm, t = int(s * 0.1), int(s * 0.04)
-        d.rectangle((cx - arm, cy - t, cx + arm, cy + t), fill=color)
-        d.rectangle((cx - t, cy - arm, cx + t, cy + arm), fill=color)
-
+    shapes = POSITION_SHAPES.get(position, {})
+    for part, fill in (("dim", dim), ("lit", color)):
+        for shape in shapes.get(part, []):
+            d.polygon([(x * k, y * k) for x, y in _outline(shape)], fill=fill)
     return img.resize((size, size), Image.Resampling.LANCZOS)
-
-
-# ───────────────────────── meme panel ─────────────────────────
-
-def _meme_panel(meme: Image.Image, size: tuple[int, int], accent) -> Image.Image:
-    w, h = size
-    panel = _cover(meme, size).filter(ImageFilter.GaussianBlur(18))
-    panel.alpha_composite(Image.new("RGBA", size, (0, 0, 0, 120)))
-    inner = ImageOps.contain(meme.convert("RGBA"), (w - 16, h - 16), Image.Resampling.LANCZOS)
-    panel.alpha_composite(inner, ((w - inner.width) // 2, (h - inner.height) // 2))
-    panel = _rounded(panel, 22)
-    ImageDraw.Draw(panel).rounded_rectangle((1, 1, w - 2, h - 2), 22, outline=accent + (255,), width=3)
-    return panel
 
 
 # ───────────────────────── the card ─────────────────────────
 
-def draw(m: MatchData, dd: DataDragon | None, meme: Image.Image | None = None, language: str = "es") -> Image.Image:
+def draw(m: MatchData, dd: DataDragon | None, language: str = "es") -> Image.Image:
     t = i18n.get(language)
     accent = ACCENT[m.result]
 
@@ -293,10 +305,5 @@ def draw(m: MatchData, dd: DataDragon | None, meme: Image.Image | None = None, l
         d.text((x0 + 16, box_y + 13), label, font=label_font, fill=DARK_GREY)
         value_font = _fit_font(value, lambda s: poppins("SemiBold", s), 28, box_w - 28, 18)
         d.text((x0 + 16, box_y + 34), value, font=value_font, fill=WHITE)
-
-    # ── Embedded meme ──
-    if meme is not None:
-        left, top, right, bottom = MEME_BOX
-        canvas.alpha_composite(_meme_panel(meme, (right - left, bottom - top), accent), (left, top))
 
     return canvas.convert("RGB")

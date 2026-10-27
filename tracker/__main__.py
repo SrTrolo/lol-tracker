@@ -130,16 +130,16 @@ def message_text(m: MatchData, cfg: dict) -> str:
 
 
 def post(m: MatchData, cfg: dict, dd: DataDragon, dry_run: bool) -> None:
-    meme_img, meme_gif = memes.pick(m.result) if cfg["memes"]["enabled"] else (None, None)
-    img = card.draw(m, dd, meme_img, cfg["language"])
+    meme = memes.pick(m.result) if cfg["memes"]["enabled"] else None
+    img = card.draw(m, dd, cfg["language"])
     text = message_text(m, cfg)
     if dry_run:
         OUTPUT.mkdir(exist_ok=True)
         path = OUTPUT / f"{m.match_id}_{m.player}.png"
         img.save(path)
-        log.info("[dry run] %s → %s %s", text, path.name, f"+ {meme_gif.name}" if meme_gif else "")
+        log.info("[dry run] %s → %s %s", text, path.name, f"+ {meme.name}" if meme else "")
         return
-    webhook.send(os.environ["DISCORD_WEBHOOK_URL"], text, img, meme_gif)
+    webhook.send(os.environ["DISCORD_WEBHOOK_URL"], text, img, meme)
     log.info("Sent: %s", text)
 
 
@@ -248,11 +248,11 @@ def demo(cfg: dict) -> None:
     ]
     OUTPUT.mkdir(exist_ok=True)
     for m in samples:
-        meme_img, meme_gif = memes.pick(m.result) if cfg["memes"]["enabled"] else (None, None)
-        img = card.draw(m, dd, meme_img, cfg["language"])
+        meme = memes.pick(m.result) if cfg["memes"]["enabled"] else None
+        img = card.draw(m, dd, cfg["language"])
         path = OUTPUT / f"demo_{m.result}.png"
         img.save(path)
-        extra = f" (+ {meme_gif.name} would be attached)" if meme_gif else ""
+        extra = f" (+ {meme.name} would be sent after it)" if meme else ""
         print(f"✔ {path.relative_to(ROOT)}{extra}\n  Message: {message_text(m, cfg)}")
 
 

@@ -2,32 +2,17 @@
 
 from __future__ import annotations
 
-import logging
 import random
 from pathlib import Path
 
-from PIL import Image
-
-log = logging.getLogger("tracker")
-
 FOLDER = Path(__file__).resolve().parent.parent / "memes"
-STATIC = {".png", ".jpg", ".jpeg", ".webp"}
-ANIMATED = {".gif"}
+EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp", ".gif"}
 
 
-def pick(result: str) -> tuple[Image.Image | None, Path | None]:
-    """Return (static image to embed in the card, gif to attach). One of them, or neither."""
+def pick(result: str) -> Path | None:
+    """Return a random meme file to send after the card, or None if the folder is empty."""
     folder = FOLDER / result
     if not folder.is_dir():
-        return None, None
-    candidates = [f for f in folder.iterdir() if f.suffix.lower() in STATIC | ANIMATED]
-    if not candidates:
-        return None, None
-    chosen = random.choice(candidates)
-    if chosen.suffix.lower() in ANIMATED:
-        return None, chosen
-    try:
-        return Image.open(chosen).convert("RGBA"), None
-    except Exception as e:  # noqa: BLE001
-        log.warning("Could not open meme %s (%s)", chosen.name, e)
-        return None, None
+        return None
+    candidates = [f for f in folder.iterdir() if f.suffix.lower() in EXTENSIONS]
+    return random.choice(candidates) if candidates else None

@@ -7,7 +7,7 @@ It runs for free on **GitHub Actions** every 10 minutes: no bot, no server, your
 - Filter by queue (SoloQ, Flex…)
 - Choose what gets posted: wins, losses or both
 - One card style for wins and one for losses: champion splash art, icon, K/D/A, position, items, CS, damage, gold, vision and kill participation
-- Optional random memes: static images are embedded in the card, GIFs are attached next to it
+- Optional random memes (images or GIFs), sent right after the card
 - Remakes are skipped
 
 ---
@@ -78,8 +78,8 @@ From then on it runs on its own every ~10 minutes.
 ## Memes
 Put images in `memes/win/` and `memes/loss/` (upload them on GitHub with **Add file → Upload files** inside each folder).
 
-- **PNG / JPG / WEBP** → embedded in the card, top-right.
-- **GIF** → sent as a separate attachment in the same message (max 10 MB).
+- **PNG / JPG / WEBP / GIF**, max 10 MB.
+- The meme is sent as its own message right after the card, so both show at full size.
 - One is picked at random each time. Empty folder = no meme.
 
 ## Testing on your PC (optional)
