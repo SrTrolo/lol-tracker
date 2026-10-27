@@ -2,8 +2,8 @@ name: LoL tracker
 
 on:
   schedule:
-    # Every 10 minutes (offset from :00, which is GitHub's busiest minute)
-    - cron: "4-59/10 * * * *"
+    # Every 5 minutes, GitHub's minimum (offset from :00, which is GitHub's busiest minute)
+    - cron: "2-59/5 * * * *"
   workflow_dispatch:
     inputs:
       test_riot_id:

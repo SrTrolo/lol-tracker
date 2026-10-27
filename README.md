@@ -1,7 +1,7 @@
 # LoL Match Tracker → Discord
 
 Posts a card to a Discord channel every time a tracked player finishes a League of Legends game.
-It runs for free on **GitHub Actions** every 10 minutes: no bot, no server, your PC can stay off.
+It runs for free on **GitHub Actions** every 5 minutes: no bot, no server, your PC can stay off.
 
 - Track any number of players by Riot ID (`Name#TAG`)
 - Filter by queue (SoloQ, Flex…)
@@ -23,7 +23,7 @@ It runs for free on **GitHub Actions** every 10 minutes: no bot, no server, your
 1. Sign in at <https://developer.riotgames.com> with your Riot account.
 2. Your dashboard shows a **Development API Key**. It works right away but **expires every 24 h**, so it's only good for testing.
 3. For permanent use, **register a Personal API Key** (Register Product → Personal API Key). Describe the project, e.g.:
-   > A private Discord webhook for a small group of friends. Every 10 minutes it checks the latest ranked matches of a handful of players (Account-V1 + Match-V5) and posts a summary image of each new game to our server. Not public, no data stored besides the last match IDs.
+   > A private Discord webhook for a small group of friends. Every 5 minutes it checks the latest ranked matches of a handful of players (Account-V1 + Match-V5) and posts a summary image of each new game to our server. Not public, no data stored besides the last match IDs.
 4. Personal keys don't expire. Once approved, replace the secret (step 4).
 
 ### 3. GitHub: create the repository
@@ -58,7 +58,7 @@ players:
 2. **LoL tracker → Run workflow**. The first run **only registers** the players (their previous games are not posted, to avoid flooding the channel).
 3. Want to see a card right now? **Run workflow** again and type a Riot ID in *“post this player's latest match”*.
 
-From then on it runs on its own every ~10 minutes.
+From then on it runs on its own every ~5 minutes.
 
 ---
 
