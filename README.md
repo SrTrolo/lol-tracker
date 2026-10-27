@@ -77,8 +77,17 @@ From then on it runs on its own every ~5 minutes.
 | `mentions` | `roles` / `users`: lists of Discord IDs | Pinged with every card; nobody else gets notified (see [Notifications](#notifications)) |
 
 ## Memes
-Put images in `memes/win/` and `memes/loss/` (upload them on GitHub with **Add file → Upload files** inside each folder).
+Memes live in a separate **private** repository, so they aren't part of this project when someone clones or downloads it. The workflow fetches it on every run with a read-only deploy key.
 
+1. Create a **private** repository (e.g. `lol-tracker-memes`) with two folders, `win/` and `loss/`, and upload your images there (**Add file → Upload files**).
+2. Create a key pair on your PC: `ssh-keygen -t ed25519 -N "" -f memes_key`.
+3. Memes repo → **Settings → Deploy keys → Add deploy key**: paste the contents of `memes_key.pub` and leave *Allow write access* unchecked.
+4. This repo → **Settings → Secrets and variables → Actions**:
+   - Secret `MEMES_SSH_KEY`: the full contents of `memes_key` (the private key, `-----BEGIN` to `-----END`).
+   - **Variables** tab → `MEMES_REPO`: `YourUser/lol-tracker-memes`.
+5. Delete both key files from your PC.
+
+- If `MEMES_REPO` isn't set (or the fetch fails), cards are posted without memes.
 - **PNG / JPG / WEBP / GIF**, max 10 MB.
 - The meme is sent as its own message right after the card, so both show at full size.
 - One is picked at random each time. Empty folder = no meme.
@@ -114,6 +123,8 @@ python -m tracker --test "Name#TAG"             # posts it to Discord
 python -m tracker --dry-run                     # full check without posting
 ```
 
+To use your memes locally, clone the private memes repo into `memes/` (it's ignored by git): `git clone <memes repo URL> memes`.
+
 ## Good to know
 - **Timing:** GitHub runs scheduled jobs "best effort", so posts can arrive a few minutes after the game ends.
 - **Inactivity:** GitHub pauses scheduled workflows in repositories with no activity for 60 days. Every posted game updates `state.json`, which counts as activity; if nobody plays for two months, just re-enable it in the **Actions** tab.
@@ -124,7 +135,6 @@ python -m tracker --dry-run                     # full check without posting
 ## Project structure
 ```
 config.yaml                 settings (edit this)
-memes/win, memes/loss       your memes
 tracker/                    code
   __main__.py               entry point and main logic
   riot.py                   Riot API + Data Dragon clients

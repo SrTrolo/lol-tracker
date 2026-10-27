@@ -41,7 +41,8 @@ language: es
 # How many recent matches per queue are checked on each run
 matches_per_check: 5
 
-# Memes: drop PNG / JPG / WEBP / GIF files into memes/win and memes/loss.
+# Memes: PNG / JPG / WEBP / GIF files in the win/ and loss/ folders of your
+# private memes repo (see README → Memes).
 # A random one is sent as a separate message right after the card.
 # If the folder is empty, the card is sent without a meme.
 memes:

@@ -25,6 +25,17 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
+      # Memes live in a separate private repo (see README → Memes)
+      - name: Fetch memes
+        if: vars.MEMES_REPO != ''
+        continue-on-error: true   # without memes the card is still posted
+        uses: actions/checkout@v6
+        with:
+          repository: ${{ vars.MEMES_REPO }}
+          ssh-key: ${{ secrets.MEMES_SSH_KEY }}
+          path: memes
+          persist-credentials: false
+
       - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
