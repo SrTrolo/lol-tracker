@@ -1,0 +1,56 @@
+# ─────────────────────────────────────────────────────────────
+#  LoL match tracker — configuration
+#  Edit this file (the GitHub web editor works fine) and commit.
+#  Changes apply on the next check.
+# ─────────────────────────────────────────────────────────────
+
+# Players to track. "name" and "tag" form the Riot ID (Name#TAG).
+# "region" is optional; default_region is used when it's missing.
+# Valid regions: euw, eune, tr, ru, me, na, br, lan, las, kr, jp, oce, sg, tw, vn, ph, th
+players:
+  - name: "ExamplePlayer"
+    tag: "EUW"
+  # - name: "AnotherFriend"
+  #   tag: "1234"
+  #   region: euw
+
+default_region: euw
+
+# Queues to watch. For now: soloq, flex
+# (also available: normal, quickplay, aram)
+queues:
+  - soloq
+  - flex
+
+# Which results get posted: wins | losses | both
+show: both
+
+# Remakes are never posted when this is true
+skip_remakes: true
+
+# Time zone used for the date on the card
+timezone: Europe/Madrid
+
+# Language of the card text: es | en
+language: es
+
+# How many recent matches per queue are checked on each run
+matches_per_check: 5
+
+# Memes: drop images into memes/win and memes/loss.
+#  - PNG / JPG / WEBP → embedded inside the card
+#  - GIF              → sent as a separate attachment next to the card
+# If the folder is empty, the card is sent without a meme.
+memes:
+  enabled: true
+
+# Message text. One is picked at random.
+# Variables: {player} {queue} {champion} {kda} {position} {duration}
+messages:
+  win:
+    - "🏆 **{player}** ha ganado una {queue} con {champion} ({kda})"
+    - "✅ Victoria de **{player}** con {champion} en {queue}. {kda}, nada mal."
+  loss:
+    - "💀 **{player}** ha perdido una {queue} con {champion} ({kda})"
+    - "📉 Otra para la colección: **{player}** cae con {champion} en {queue} ({kda})"
+    - "🪦 F en el chat por **{player}**. {champion}, {kda}, {duration} de sufrimiento."
