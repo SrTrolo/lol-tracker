@@ -20,6 +20,14 @@ CLUSTERS = {
     "oce": "sea", "sg": "sea", "tw": "sea", "vn": "sea", "ph": "sea", "th": "sea",
 }
 
+# Player region → platform host used by League-V4 (PH and TH were merged into SG2)
+PLATFORMS = {
+    "euw": "euw1", "eune": "eun1", "tr": "tr1", "ru": "ru", "me": "me1",
+    "na": "na1", "br": "br1", "lan": "la1", "las": "la2",
+    "kr": "kr", "jp": "jp1",
+    "oce": "oc1", "sg": "sg2", "tw": "tw2", "vn": "vn2", "ph": "sg2", "th": "sg2",
+}
+
 # Config name → Riot queueId
 QUEUES = {
     "soloq": 420,
@@ -27,6 +35,12 @@ QUEUES = {
     "normal": 400,
     "quickplay": 490,
     "aram": 450,
+}
+
+# Ranked queueId → League-V4 queueType
+RANKED_QUEUES = {
+    420: "RANKED_SOLO_5x5",
+    440: "RANKED_FLEX_SR",
 }
 
 
@@ -42,11 +56,19 @@ class NotFound(RiotError):
     pass
 
 
-def cluster_for(region: str) -> str:
+def _lookup(table: dict[str, str], region: str) -> str:
     region = (region or "euw").lower().strip()
-    if region not in CLUSTERS:
-        raise RiotError(f"Unknown region '{region}'. Valid: {', '.join(CLUSTERS)}")
-    return CLUSTERS[region]
+    if region not in table:
+        raise RiotError(f"Unknown region '{region}'. Valid: {', '.join(table)}")
+    return table[region]
+
+
+def cluster_for(region: str) -> str:
+    return _lookup(CLUSTERS, region)
+
+
+def platform_for(region: str) -> str:
+    return _lookup(PLATFORMS, region)
 
 
 class RiotAPI:
@@ -54,8 +76,9 @@ class RiotAPI:
         self.session = requests.Session()
         self.session.headers["X-Riot-Token"] = api_key.strip()
 
-    def _get(self, cluster: str, path: str, params: dict | None = None):
-        url = f"https://{cluster}.api.riotgames.com{path}"
+    def _get(self, host: str, path: str, params: dict | None = None):
+        """GET from a regional cluster (e.g. "europe") or a platform (e.g. "euw1")."""
+        url = f"https://{host}.api.riotgames.com{path}"
         for attempt in range(5):
             try:
                 r = self.session.get(url, params=params, timeout=20)
@@ -100,12 +123,17 @@ class RiotAPI:
     def match(self, match_id: str, region: str) -> dict:
         return self._get(cluster_for(region), f"/lol/match/v5/matches/{match_id}")
 
+    def league_entries(self, puuid: str, region: str) -> list[dict]:
+        """The player's current rank in every ranked queue they've played this season."""
+        return self._get(platform_for(region), f"/lol/league/v4/entries/by-puuid/{puuid}")
+
 
 DDRAGON = "https://ddragon.leagueoflegends.com"
+CDRAGON = "https://raw.communitydragon.org/latest/plugins"
 
 
 class DataDragon:
-    """Official champion and item images (Riot's public CDN).
+    """Champion and item images (Riot's public CDN) and rank emblems (CommunityDragon, the client's assets).
 
     Without a connection everything returns None and the card falls back to placeholders.
     """
@@ -154,3 +182,6 @@ class DataDragon:
         if not item_id:
             return None
         return self._image(f"{DDRAGON}/cdn/{self.version}/img/item/{item_id}.png")
+
+    def rank_emblem(self, tier: str):
+        return self._image(f"{CDRAGON}/rcp-fe-lol-shared-components/global/default/{tier.lower()}.png")

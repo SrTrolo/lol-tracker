@@ -23,8 +23,8 @@ from zoneinfo import ZoneInfo
 import yaml
 
 from . import card, i18n, memes, webhook
-from .match import MatchData, parse
-from .riot import QUEUES, DataDragon, InvalidKey, NotFound, RiotAPI, RiotError
+from .match import MatchData, Rank, parse, rank_for
+from .riot import QUEUES, RANKED_QUEUES, DataDragon, InvalidKey, NotFound, RiotAPI, RiotError
 
 ROOT = Path(__file__).resolve().parent.parent
 STATE_FILE = ROOT / "state.json"
@@ -136,17 +136,37 @@ def message_text(m: MatchData, cfg: dict) -> str:
     return template.format_map(values)
 
 
+def attach_ranks(matches: list[MatchData], api: RiotAPI, puuid: str, region: str) -> None:
+    """Add the player's current rank to their ranked matches (one request; without it if Riot fails)."""
+    ranked = [m for m in matches if m.queue_id in RANKED_QUEUES]
+    if not ranked:
+        return
+    try:
+        entries = api.league_entries(puuid, region)
+    except RiotError as e:
+        log.warning("Could not read the rank of %s (%s); posting without it.", ranked[0].riot_id, e)
+        return
+    for m in ranked:
+        m.rank = rank_for(entries, m.queue_id)
+
+
+def render(m: MatchData, cfg: dict, dd: DataDragon) -> tuple[str, bytes]:
+    """The card for a match, with a random meme, as (file name, contents)."""
+    meme = memes.pick(m.result, card.MEME_SIZE) if cfg["memes"]["enabled"] else None
+    banner = card.draw(m, dd, cfg["language"], meme)
+    return banner.encode()
+
+
 def post(m: MatchData, cfg: dict, dd: DataDragon, dry_run: bool) -> None:
-    meme = memes.pick(m.result) if cfg["memes"]["enabled"] else None
-    img = card.draw(m, dd, cfg["language"])
+    filename, data = render(m, cfg, dd)
     text = message_text(m, cfg)
     if dry_run:
         OUTPUT.mkdir(exist_ok=True)
-        path = OUTPUT / f"{m.match_id}_{m.player}.png"
-        img.save(path)
-        log.info("[dry run] %s → %s %s", text, path.name, f"+ {meme.name}" if meme else "")
+        path = OUTPUT / f"{m.match_id}_{m.player}{Path(filename).suffix}"
+        path.write_bytes(data)
+        log.info("[dry run] %s → %s", text, path.name)
         return
-    webhook.send(os.environ["DISCORD_WEBHOOK_URL"], text, img, meme,
+    webhook.send(os.environ["DISCORD_WEBHOOK_URL"], text, filename, data,
                  cfg["mentions"]["roles"], cfg["mentions"]["users"])
     log.info("Sent: %s", text)
 
@@ -203,6 +223,7 @@ def check(cfg: dict, api: RiotAPI, dd: DataDragon, dry_run: bool) -> int:
             else:
                 seen.add(mid)
 
+        attach_ranks(new_matches, api, puuid, region)
         for md in sorted(new_matches, key=lambda x: x.ended_at):  # oldest first
             if passes_filter(md, cfg):
                 try:
@@ -238,6 +259,7 @@ def test(riot_id: str, cfg: dict, api: RiotAPI, dd: DataDragon, dry_run: bool) -
         sys.exit(f"{riot_id} has no recent matches in the configured queues.")
     latest = max(matches, key=lambda x: x.ended_at)
     log.info("Test: latest match of %s (%s)", riot_id, latest.result)
+    attach_ranks([latest], api, puuid, region)
     post(latest, cfg, dd, dry_run)
 
 
@@ -249,19 +271,17 @@ def demo(cfg: dict) -> None:
     samples = [
         MatchData("DEMO_WIN", True, False, "YourFriend", "EUW", *dd.champion(103, "Ahri"), 16, "MIDDLE",
                   11, 3, 9, 214, 31 * 60 + 42, 28450, 13820, 21, 0.62, 420, now - timedelta(minutes=40),
-                  [3285, 3020, 4645, 3089, 3157, 0, 3363]),
+                  [3285, 3020, 4645, 3089, 3157, 0, 3363], rank=Rank("EMERALD", "IV", 69)),
         MatchData("DEMO_LOSS", False, False, "YourFriend", "EUW", *dd.champion(157, "Yasuo"), 13, "TOP",
                   2, 11, 3, 156, 27 * 60 + 5, 12030, 8410, 9, 0.24, 440, now,
-                  [6672, 3006, 1055, 1036, 0, 0, 3340]),
+                  [6672, 3006, 1055, 1036, 0, 0, 3340], rank=Rank("MASTER", "", 245)),
     ]
     OUTPUT.mkdir(exist_ok=True)
     for m in samples:
-        meme = memes.pick(m.result) if cfg["memes"]["enabled"] else None
-        img = card.draw(m, dd, cfg["language"])
-        path = OUTPUT / f"demo_{m.result}.png"
-        img.save(path)
-        extra = f" (+ {meme.name} would be sent after it)" if meme else ""
-        print(f"✔ {path.relative_to(ROOT)}{extra}\n  Message: {message_text(m, cfg)}")
+        filename, data = render(m, cfg, dd)
+        path = OUTPUT / f"demo_{m.result}{Path(filename).suffix}"
+        path.write_bytes(data)
+        print(f"✔ {path.relative_to(ROOT)}\n  Message: {message_text(m, cfg)}")
 
 
 def main() -> None:

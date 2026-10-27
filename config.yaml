@@ -43,7 +43,8 @@ matches_per_check: 5
 
 # Memes: PNG / JPG / WEBP / GIF files in the win/ and loss/ folders of your
 # private memes repo (see README → Memes).
-# A random one is sent as a separate message right after the card.
+# A random one is shown in a frame next to the title. Animated GIF / WEBP
+# memes turn the whole card into an animated GIF.
 # If the folder is empty, the card is sent without a meme.
 memes:
   enabled: true

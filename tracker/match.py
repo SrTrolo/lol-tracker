@@ -6,7 +6,16 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
 
-from .riot import DataDragon
+from .riot import RANKED_QUEUES, DataDragon
+
+APEX_TIERS = ("MASTER", "GRANDMASTER", "CHALLENGER")  # no divisions
+
+
+@dataclass
+class Rank:
+    tier: str               # Riot tier id (e.g. "EMERALD")
+    division: str           # "I"–"IV", or "" for apex tiers
+    lp: int
 
 
 @dataclass
@@ -32,6 +41,7 @@ class MatchData:
     queue_id: int
     ended_at: datetime
     items: list[int] = field(default_factory=list)
+    rank: Rank | None = None  # current rank in this queue, for ranked games
 
     @property
     def result(self) -> str:
@@ -103,3 +113,14 @@ def parse(match: dict, puuid: str, dd: DataDragon, tz: str = "Europe/Madrid") ->
         ended_at=ended_at,
         items=[int(me.get(f"item{i}", 0)) for i in range(7)],
     )
+
+
+def rank_for(entries: list[dict], queue_id: int) -> Rank | None:
+    """Pick the rank of the given queue from League-V4 entries (None if unranked or not a ranked queue)."""
+    queue_type = RANKED_QUEUES.get(queue_id)
+    entry = next((e for e in entries if e.get("queueType") == queue_type), None)
+    if entry is None:
+        return None
+    tier = entry["tier"]
+    division = "" if tier in APEX_TIERS else entry.get("rank", "")
+    return Rank(tier, division, int(entry.get("leaguePoints", 0)))

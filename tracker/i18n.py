@@ -14,6 +14,10 @@ STRINGS = {
         "date": "{month} {day} · {time}",
         "perfect": "Perfect",
         "game": "game",
+        "tiers": {"IRON": "IRON", "BRONZE": "BRONZE", "SILVER": "SILVER", "GOLD": "GOLD", "PLATINUM": "PLATINUM",
+                  "EMERALD": "EMERALD", "DIAMOND": "DIAMOND", "MASTER": "MASTER", "GRANDMASTER": "GRANDMASTER",
+                  "CHALLENGER": "CHALLENGER"},
+        "lp": "{} LP",
     },
     "es": {
         "win": "VICTORIA",
@@ -28,6 +32,11 @@ STRINGS = {
         "date": "{day} {month} · {time}",
         "perfect": "Perfecto",
         "game": "partida",
+        # Same names as the es_ES League client
+        "tiers": {"IRON": "HIERRO", "BRONZE": "BRONCE", "SILVER": "PLATA", "GOLD": "ORO", "PLATINUM": "PLATINO",
+                  "EMERALD": "ESMERALDA", "DIAMOND": "DIAMANTE", "MASTER": "MAESTRO", "GRANDMASTER": "GRAN MAESTRO",
+                  "CHALLENGER": "ASPIRANTE"},
+        "lp": "{} PL",
     },
 }
 

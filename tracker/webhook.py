@@ -2,48 +2,28 @@
 
 from __future__ import annotations
 
-import io
 import json
-import logging
 import time
 from collections.abc import Sequence
 from pathlib import Path
 
 import requests
-from PIL import Image
 
-log = logging.getLogger("tracker")
-
-MAX_FILE_SIZE = 9_500_000  # Discord caps attachments at ~10 MB
-CONTENT_TYPES = {".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg",
-                 ".webp": "image/webp", ".gif": "image/gif"}
+CONTENT_TYPES = {".png": "image/png", ".gif": "image/gif"}
 
 
-def send(webhook_url: str, text: str, card: Image.Image, meme: Path | None = None,
+def send(webhook_url: str, text: str, filename: str, data: bytes,
          roles: Sequence[str] = (), users: Sequence[str] = ()) -> None:
-    """Post the card, then the meme (if any) as a separate message right after it.
+    """Post the message with the card attached.
 
-    Only the given roles / users are pinged (once, with the card); any other mention stays silent.
+    Only the given roles / users are pinged; any other mention stays silent.
     """
     pings = " ".join([f"<@&{r}>" for r in roles] + [f"<@{u}>" for u in users])
     content = f"{pings} {text}" if pings else text
     allowed = {"parse": [], "roles": list(roles), "users": list(users)}
-    buf = io.BytesIO()
-    card.save(buf, "PNG", optimize=True)
+    content_type = CONTENT_TYPES[Path(filename).suffix]
     _post(webhook_url, {"content": content, "allowed_mentions": allowed},
-          {"files[0]": ("card.png", buf.getvalue(), "image/png")})
-
-    if meme is None:
-        return
-    if meme.stat().st_size > MAX_FILE_SIZE:
-        log.warning("Meme %s is larger than 10 MB; skipping it.", meme.name)
-        return
-    content_type = CONTENT_TYPES.get(meme.suffix.lower(), "application/octet-stream")
-    try:
-        _post(webhook_url, {}, {"files[0]": (meme.name, meme.read_bytes(), content_type)})
-    except Exception as e:  # noqa: BLE001
-        # The card is already posted: don't fail, or the next run would post it again.
-        log.warning("Could not send meme %s (%s)", meme.name, e)
+          {"files[0]": (filename, data, content_type)})
 
 
 def _post(webhook_url: str, payload: dict, files: dict) -> None:

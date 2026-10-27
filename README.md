@@ -7,7 +7,8 @@ It runs for free on **GitHub Actions** every 5 minutes: no bot, no server, your 
 - Filter by queue (SoloQ, Flex…)
 - Choose what gets posted: wins, losses or both
 - One card style for wins and one for losses: champion splash art, icon, K/D/A, position, items, CS, damage, gold, vision and kill participation
-- Optional random memes (images or GIFs), sent right after the card
+- Ranked games (SoloQ / Flex) also show the player's current rank: emblem, tier, division and LP
+- Optional random meme inside the card; animated memes (GIF / WEBP) turn the card into an animated GIF
 - Remakes are skipped
 
 ---
@@ -88,8 +89,8 @@ Memes live in a separate **private** repository, so they aren't part of this pro
 5. Delete both key files from your PC.
 
 - If `MEMES_REPO` isn't set (or the fetch fails), cards are posted without memes.
-- **PNG / JPG / WEBP / GIF**, max 10 MB.
-- The meme is sent as its own message right after the card, so both show at full size.
+- **PNG / JPG / WEBP / GIF**. The meme sits in a square frame next to the title, cropped to fit, so a centred subject works best.
+- With an animated GIF or WEBP the whole card is posted as an animated GIF. GIFs only have 256 colours, so its background looks slightly grainier than the usual PNG. If it would go over Discord's 10 MB limit, the card is sent still.
 - One is picked at random each time. Empty folder = no meme.
 
 ## Notifications
@@ -130,6 +131,7 @@ To use your memes locally, clone the private memes repo into `memes/` (it's igno
 - **Inactivity:** GitHub pauses scheduled workflows in repositories with no activity for 60 days. Every posted game updates `state.json`, which counts as activity; if nobody plays for two months, just re-enable it in the **Actions** tab.
 - **Expired key:** if the run fails with *"Riot rejected the API key"*, your development key expired. Generate a new one or use a personal key.
 - **Duo games:** if two tracked players are in the same game, each gets their own card.
+- **Rank:** it's read when the card is posted, so it shows the LP right after the game. Rank emblems come from [CommunityDragon](https://communitydragon.org) (the League client's own images); if they can't be downloaded, the tier and LP are shown without the emblem.
 - `state.json` stores the IDs of the matches already processed. Don't edit it; delete it to start over.
 
 ## Project structure
@@ -140,8 +142,9 @@ tracker/                    code
   riot.py                   Riot API + Data Dragon clients
   match.py                  match data extraction
   card.py                   card rendering (Pillow)
+  gif.py                    animated card encoding
   i18n.py                   card texts (es / en)
-  memes.py, webhook.py      meme picking, Discord posting
+  memes.py, webhook.py      meme loading, Discord posting
 fonts/                      Bebas Neue and Poppins (SIL Open Font License)
 .github/workflows/          GitHub Actions schedule
 ```
