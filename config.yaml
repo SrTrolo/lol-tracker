@@ -54,7 +54,7 @@ memes:
 # To get an ID: Discord → User Settings → Advanced → Developer Mode, then
 # right-click the role (or person) → Copy ID. Keep the quotes.
 mentions:
-  roles: ["1564703848948437072"]   # Lig o leiens
+  roles: []
   users: []
 
 # Message text. One is picked at random.
