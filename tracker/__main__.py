@@ -271,10 +271,12 @@ def demo(cfg: dict) -> None:
     samples = [
         MatchData("DEMO_WIN", True, False, "YourFriend", "EUW", *dd.champion(103, "Ahri"), 16, "MIDDLE",
                   11, 3, 9, 214, 31 * 60 + 42, 28450, 13820, 21, 0.62, 420, now - timedelta(minutes=40),
-                  [3285, 3020, 4645, 3089, 3157, 0, 3363], rank=Rank("EMERALD", "IV", 69)),
+                  [3285, 3020, 4645, 3089, 3157, 0, 3363], spells=[4, 14], role_item=1206,
+                  rank=Rank("EMERALD", "IV", 69)),
         MatchData("DEMO_LOSS", False, False, "YourFriend", "EUW", *dd.champion(157, "Yasuo"), 13, "TOP",
                   2, 11, 3, 156, 27 * 60 + 5, 12030, 8410, 9, 0.24, 440, now,
-                  [6672, 3006, 1055, 1036, 0, 0, 3340], rank=Rank("MASTER", "", 245)),
+                  [6672, 3006, 1055, 1036, 0, 0, 3340], spells=[4, 12], role_item=1221,
+                  rank=Rank("MASTER", "", 245)),
     ]
     OUTPUT.mkdir(exist_ok=True)
     for m in samples:

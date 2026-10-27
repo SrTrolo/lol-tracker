@@ -6,7 +6,7 @@ It runs for free on **GitHub Actions** every 5 minutes: no bot, no server, your 
 - Track any number of players by Riot ID (`Name#TAG`)
 - Filter by queue (SoloQ, Flex…)
 - Choose what gets posted: wins, losses or both
-- One card style for wins and one for losses: champion splash art, icon, K/D/A, position, items, CS, damage, gold, vision and kill participation
+- One card style for wins and one for losses: champion splash art, icon, K/D/A, position, summoner spells, items (with the trinket and the role quest slot), CS, damage, gold, vision and kill participation
 - Ranked games (SoloQ / Flex) also show the player's current rank: emblem, tier, division and LP
 - Optional random meme inside the card; animated memes (GIF / WEBP) turn the card into an animated GIF
 - Remakes are skipped

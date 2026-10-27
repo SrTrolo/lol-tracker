@@ -133,7 +133,8 @@ CDRAGON = "https://raw.communitydragon.org/latest/plugins"
 
 
 class DataDragon:
-    """Champion and item images (Riot's public CDN) and rank emblems (CommunityDragon, the client's assets).
+    """Champion, item and summoner spell images (Riot's public CDN) and rank emblems (CommunityDragon,
+    the client's assets).
 
     Without a connection everything returns None and the card falls back to placeholders.
     """
@@ -142,6 +143,7 @@ class DataDragon:
         self.session = requests.Session()
         self.version: str | None = None
         self.champions: dict[int, tuple[str, str]] = {}  # numeric key → (id, display name)
+        self.spells: dict[int, str] = {}                 # numeric key → id (e.g. 4 → "SummonerFlash")
         self._cache: dict[str, Image.Image | None] = {}
         try:
             self.version = self.session.get(f"{DDRAGON}/api/versions.json", timeout=15).json()[0]
@@ -150,6 +152,11 @@ class DataDragon:
             ).json()["data"]
             for c in data.values():
                 self.champions[int(c["key"])] = (c["id"], c["name"])
+            spells = self.session.get(
+                f"{DDRAGON}/cdn/{self.version}/data/{locale}/summoner.json", timeout=20
+            ).json()["data"]
+            for s in spells.values():
+                self.spells[int(s["key"])] = s["id"]
         except Exception as e:  # noqa: BLE001
             log.warning("Could not load Data Dragon (%s). Placeholder images will be used.", e)
             self.version = None
@@ -182,6 +189,11 @@ class DataDragon:
         if not item_id:
             return None
         return self._image(f"{DDRAGON}/cdn/{self.version}/img/item/{item_id}.png")
+
+    def spell(self, spell_id: int):
+        if spell_id not in self.spells:
+            return None
+        return self._image(f"{DDRAGON}/cdn/{self.version}/img/spell/{self.spells[spell_id]}.png")
 
     def rank_emblem(self, tier: str):
         return self._image(f"{CDRAGON}/rcp-fe-lol-shared-components/global/default/{tier.lower()}.png")

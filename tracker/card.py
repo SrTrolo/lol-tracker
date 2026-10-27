@@ -29,6 +29,8 @@ TITLE_BASELINE = 136
 META_Y = 152
 ICON_Y, ICON_SIZE = 204, 150
 ITEMS_Y, ITEM_SIZE, ITEM_GAP = 382, 44, 7
+SPELLS_GAP = 32                     # summoner spells → items, with a divider in the middle
+TRINKET_GAP = ITEM_GAP + 10         # items → trinket and role quest item, slightly apart
 STATS_Y, STATS_H, STATS_GAP = 448, 82, 12
 
 # Type sizes shared by several blocks
@@ -390,24 +392,40 @@ def _player(canvas: Image.Image, m: MatchData, t: dict) -> None:
 
 
 def _items(canvas: Image.Image, m: MatchData, dd: DataDragon | None) -> None:
-    """The six items and the trinket, slightly apart."""
-    slots = []
-    for i, item in enumerate((m.items + [0] * 7)[:7]):
-        x = PAD + i * (ITEM_SIZE + ITEM_GAP) + (10 if i == 6 else 0)
-        img = dd.item(item) if (dd and item) else None
-        if img:
-            canvas.alpha_composite(_rounded(ImageOps.fit(img, (ITEM_SIZE, ITEM_SIZE)), 8), (x, ITEMS_Y))
-        slots.append((x, bool(img)))
+    """Summoner spells | the six items, then the trinket and the role quest item."""
+    spells = [dd.spell(s) if dd else None for s in (m.spells + [0, 0])[:2]]
+    items = [dd.item(i) if dd else None for i in (m.items + [0] * 7)[:7]]
+    extras = [items[6], dd.item(m.role_item) if dd else None]
 
-    def item_frames(dl: ImageDraw.ImageDraw):
-        for x, filled in slots:
-            box = (x, ITEMS_Y, x + ITEM_SIZE - 1, ITEMS_Y + ITEM_SIZE - 1)
-            if filled:
+    spells_end = _slots(canvas, spells, PAD)
+    _divider(canvas, spells_end + SPELLS_GAP // 2)
+    items_end = _slots(canvas, items[:6], spells_end + SPELLS_GAP)
+    _slots(canvas, extras, items_end + TRINKET_GAP)
+
+
+def _slots(canvas: Image.Image, images: list[Image.Image | None], x: int) -> int:
+    """A group of item-sized slots from x (empty ones for None). Returns where the group ends."""
+    xs = [x + i * (ITEM_SIZE + ITEM_GAP) for i in range(len(images))]
+    for xi, img in zip(xs, images):
+        if img:
+            canvas.alpha_composite(_rounded(ImageOps.fit(img, (ITEM_SIZE, ITEM_SIZE)), 8), (xi, ITEMS_Y))
+
+    def frames(dl: ImageDraw.ImageDraw):
+        for xi, img in zip(xs, images):
+            box = (xi, ITEMS_Y, xi + ITEM_SIZE - 1, ITEMS_Y + ITEM_SIZE - 1)
+            if img:
                 dl.rounded_rectangle(box, 8, outline=(255, 255, 255, 50), width=1)
             else:
                 dl.rounded_rectangle(box, 8, fill=(255, 255, 255, 14), outline=(255, 255, 255, 40), width=1)
 
-    _translucent(canvas, item_frames)
+    _translucent(canvas, frames)
+    return x + len(images) * (ITEM_SIZE + ITEM_GAP) - ITEM_GAP
+
+
+def _divider(canvas: Image.Image, x: int) -> None:
+    """A short vertical line between two groups of slots."""
+    _translucent(canvas, lambda dl: dl.line((x, ITEMS_Y + 8, x, ITEMS_Y + ITEM_SIZE - 8),
+                                             fill=(255, 255, 255, 60), width=2))
 
 
 def _stats(canvas: Image.Image, m: MatchData, t: dict) -> None:

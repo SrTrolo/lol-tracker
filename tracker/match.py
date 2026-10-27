@@ -41,6 +41,8 @@ class MatchData:
     queue_id: int
     ended_at: datetime
     items: list[int] = field(default_factory=list)
+    spells: list[int] = field(default_factory=list)  # the two summoner spells
+    role_item: int = 0        # role quest slot: the quest in progress or its reward
     rank: Rank | None = None  # current rank in this queue, for ranked games
 
     @property
@@ -112,6 +114,8 @@ def parse(match: dict, puuid: str, dd: DataDragon, tz: str = "Europe/Madrid") ->
         queue_id=int(info.get("queueId", 0)),
         ended_at=ended_at,
         items=[int(me.get(f"item{i}", 0)) for i in range(7)],
+        spells=[int(me.get("summoner1Id", 0)), int(me.get("summoner2Id", 0))],
+        role_item=int(me.get("roleBoundItem", 0)),
     )
 
 
