@@ -35,6 +35,7 @@ QUEUES = {
     "normal": 400,
     "quickplay": 490,
     "aram": 450,
+    "mayhem": 2400,  # ARAM: Mayhem
 }
 
 # Ranked queueId → League-V4 queueType

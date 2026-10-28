@@ -63,7 +63,7 @@ The settings for everyone. `default_region`, `queues`, `show`, `skip_remakes` an
 | Option | Values | What it does |
 |---|---|---|
 | `default_region` | `euw`, `eune`, `na`, `kr`… | Region when a player has none |
-| `queues` | `soloq`, `flex` (also `normal`, `quickplay`, `aram`) | Which queues to watch |
+| `queues` | `soloq`, `flex` (also `normal`, `quickplay`, `aram`, `mayhem` = ARAM: Mayhem) | Which queues to watch |
 | `show` | `wins` / `losses` / `both` | Which results get posted |
 | `skip_remakes` | `true` / `false` | Ignore remakes |
 | `language` | `es` / `en` | Card language |
@@ -110,7 +110,7 @@ players:
 | Setting | Values | When left out |
 |---|---|---|
 | `region` | `euw`, `eune`, `na`, `kr`… | `default_region` |
-| `queues` | `soloq`, `flex`, `normal`, `quickplay`, `aram` | `queues` |
+| `queues` | `soloq`, `flex`, `normal`, `quickplay`, `aram`, `mayhem` (ARAM: Mayhem) | `queues` |
 | `show` | `wins` / `losses` / `both` | `show` |
 | `skip_remakes` | `true` / `false` | `skip_remakes` |
 | `messages` | `win` and/or `loss`, each a list of texts | the `config.yaml` texts, for wins and losses separately |

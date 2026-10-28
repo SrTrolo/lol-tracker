@@ -13,7 +13,7 @@
 default_region: euw
 
 # Queues to watch. For now: soloq, flex
-# (also available: normal, quickplay, aram)
+# (also available: normal, quickplay, aram, mayhem = ARAM: Mayhem)
 queues:
   - soloq
   - flex
