@@ -1,3 +1,49 @@
 {
-  "players": {}
+  "players": {
+    "d4229081ed72b247": {
+      "seen": [
+        "c50cdc4025816973",
+        "45321dae71784a4f",
+        "41a14cffd9d45a18",
+        "b9c371bdb554aaea",
+        "f490c697ca146e9c",
+        "3e47e89e507f8b84",
+        "9108067d9e033fd6",
+        "b3859e3ede1d28f4",
+        "2a0ed48cf989521a",
+        "ace8c2ef01152da1"
+      ],
+      "initialized": true
+    },
+    "c259c4bfbb3c0aad": {
+      "seen": [
+        "1c57f838269c681e",
+        "c50cdc4025816973",
+        "45321dae71784a4f",
+        "41a14cffd9d45a18",
+        "f490c697ca146e9c",
+        "2efdf518d324d242",
+        "f0bdef4f10ef4bea",
+        "0d2e0cf0aa17eaad",
+        "4d1a49749a15e599",
+        "ff3f02089c19fc25"
+      ],
+      "initialized": true
+    },
+    "25184e67b200f22d": {
+      "seen": [
+        "c50cdc4025816973",
+        "45321dae71784a4f",
+        "41a14cffd9d45a18",
+        "b9c371bdb554aaea",
+        "f490c697ca146e9c",
+        "44665d5b5529f46d",
+        "9108067d9e033fd6",
+        "b3859e3ede1d28f4",
+        "2a0ed48cf989521a",
+        "ace8c2ef01152da1"
+      ],
+      "initialized": true
+    }
+  }
 }
