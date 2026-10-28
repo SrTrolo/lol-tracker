@@ -55,8 +55,5 @@ mentions:
 messages:
   win:
     - "🏆 **{player}** ha ganado una {queue} con {champion} ({kda})"
-    - "✅ Victoria de **{player}** con {champion} en {queue}. {kda}, nada mal."
   loss:
     - "💀 **{player}** ha perdido una {queue} con {champion} ({kda})"
-    - "📉 Otra para la colección: **{player}** cae con {champion} en {queue} ({kda})"
-    - "🪦 F en el chat por **{player}**. {champion}, {kda}, {duration} de sufrimiento."
