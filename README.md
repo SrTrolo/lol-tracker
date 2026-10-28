@@ -68,7 +68,7 @@ The settings for everyone. `default_region`, `queues`, `show`, `skip_remakes` an
 | `skip_remakes` | `true` / `false` | Ignore remakes |
 | `language` | `es` / `en` | Card language |
 | `timezone` | e.g. `Europe/Madrid` | Time shown on the card |
-| `messages` | lists of texts | Message posted with the card; one is picked at random. Variables: `{player}` `{queue}` `{champion}` `{kda}` `{position}` `{duration}` |
+| `messages` | lists of texts | Message posted with the card; one is picked at random. Variables: `{player}` (`Name#TAG`) `{name}` (just the name) `{queue}` `{champion}` `{kda}` `{position}` `{duration}` |
 | `mentions` | `roles` / `users`: lists of Discord IDs | Pinged with every card; nobody else gets notified (see [Notifications](#notifications)) |
 
 ## Private repo (players and memes)

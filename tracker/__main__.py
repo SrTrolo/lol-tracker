@@ -192,7 +192,7 @@ def passes_filter(m: MatchData, p: dict) -> bool:
 def message_text(m: MatchData, messages: dict, language: str) -> str:
     t = i18n.get(language)
     template = random.choice(messages[m.result])
-    values = defaultdict(str, player=m.riot_id, queue=t["queue_short"].get(m.queue_id, t["game"]),
+    values = defaultdict(str, player=m.riot_id, name=m.player, queue=t["queue_short"].get(m.queue_id, t["game"]),
                          champion=m.champion, kda=m.kda_text,
                          position=t["positions"].get(m.position, "?"), duration=m.duration)
     return template.format_map(values)

@@ -51,7 +51,7 @@ mentions:
 
 # Message text. One is picked at random. A player with their own win or loss
 # texts in players.yaml uses those instead.
-# Variables: {player} {queue} {champion} {kda} {position} {duration}
+# Variables: {player} (Name#TAG) {name} (just the name) {queue} {champion} {kda} {position} {duration}
 messages:
   win:
     - "🏆 **{player}** ha ganado una {queue} con {champion} ({kda})"
