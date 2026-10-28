@@ -168,6 +168,7 @@ python -m tracker --dry-run                     # full check without posting
 - **Timing:** GitHub runs scheduled jobs "best effort", so posts can arrive a few minutes after the game ends.
 - **Inactivity:** GitHub pauses scheduled workflows in repositories with no activity for 60 days. Every posted game updates `state.json`, which counts as activity; if nobody plays for two months, just re-enable it in the **Actions** tab.
 - **Expired key:** if the run fails with *"Riot rejected the API key"*, your development key expired. Generate a new one or use a personal key.
+- **Repeated failures:** after 3 failed runs in a row the workflow turns itself off, so it doesn't fail (and email you) every 5 minutes. Once the cause is fixed, turn it back on: **Actions** tab → **LoL tracker → Enable workflow**.
 - **Duo games:** if two tracked players are in the same game, each gets their own card.
 - **Rank:** it's read when the card is posted, so it shows the LP right after the game. Rank emblems come from [CommunityDragon](https://communitydragon.org) (the League client's own images); if they can't be downloaded, the tier and LP are shown without the emblem.
 - `state.json` stores the matches already processed, as codes made with `STATE_KEY`. Don't edit it; delete it to start over.

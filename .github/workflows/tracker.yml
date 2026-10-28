@@ -13,6 +13,7 @@ on:
 
 permissions:
   contents: write   # needed to save state.json back to the repo
+  actions: write    # needed to turn the workflow off after repeated failures
 
 concurrency:
   group: lol-tracker
@@ -63,4 +64,21 @@ jobs:
             git commit -m "Update tracker state"
             git pull --rebase --quiet
             git push --quiet
+          fi
+
+      # An expired Riot key or a broken setting would otherwise fail (and send a mail) every
+      # 5 minutes: after MAX_FAILURES failed runs in a row the workflow turns itself off.
+      - name: Turn off after repeated failures
+        if: failure() && inputs.test_player == ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MAX_FAILURES: 3
+        run: |
+          # This run is still in progress, so the list only has the earlier ones (newest first)
+          earlier=$((MAX_FAILURES - 1))
+          failed=$(gh run list --workflow tracker.yml --status completed --limit 20 --json conclusion \
+            --jq "[.[].conclusion | select(. != \"cancelled\" and . != \"skipped\")] | .[:$earlier] | map(select(. != \"success\")) | length")
+          if [ "$failed" -ge "$earlier" ]; then
+            gh workflow disable tracker.yml
+            echo "::error::$MAX_FAILURES failed runs in a row: the workflow is now off. Fix the cause, then turn it back on (Actions → LoL tracker → Enable workflow)."
           fi
