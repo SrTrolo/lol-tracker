@@ -1,4 +1,4 @@
-"""Picks a random meme from memes/win or memes/loss and loads it for the card."""
+"""Picks a random meme from win/ or loss/ in the private repo and loads it for the card."""
 
 from __future__ import annotations
 
@@ -10,7 +10,7 @@ from pathlib import Path
 
 from PIL import Image, ImageOps, ImageSequence
 
-FOLDER = Path(__file__).resolve().parent.parent / "memes"
+FOLDER = Path(__file__).resolve().parent.parent / "private"
 EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp", ".gif"}
 MAX_FRAMES = 120  # longer animations are thinned out to keep the card light
 

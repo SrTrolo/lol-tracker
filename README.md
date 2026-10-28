@@ -3,9 +3,10 @@
 Posts a card to a Discord channel every time a tracked player finishes a League of Legends game.
 It runs for free on **GitHub Actions** every 5 minutes: no bot, no server, your PC can stay off.
 
-- Track any number of players by Riot ID (`Name#TAG`)
+- Track any number of players by Riot ID (`Name#TAG`), listed in a private repo so nobody can see who you track
 - Filter by queue (SoloQ, Flex…)
 - Choose what gets posted: wins, losses or both
+- Defaults for everyone, and per-player queues, results and message texts when you want them
 - One card style for wins and one for losses: champion splash art, icon, K/D/A, position, summoner spells, items (with the trinket and the role quest slot), CS, damage, gold, vision and kill participation
 - Ranked games (SoloQ / Flex) also show the player's current rank: emblem, tier, division and LP
 - Optional random meme inside the card; animated memes (GIF / WEBP) turn the card into an animated GIF
@@ -29,45 +30,38 @@ It runs for free on **GitHub Actions** every 5 minutes: no bot, no server, your 
 
 ### 3. GitHub: create the repository
 1. Create a free account at <https://github.com> if you don't have one.
-2. **New repository** → name it (e.g. `lol-tracker`) → choose **Public** (unlimited free Actions minutes; your keys stay hidden in secrets) → **Create**.
+2. **New repository** → name it (e.g. `lol-tracker`) → choose **Public** (unlimited free Actions minutes; your keys stay hidden in secrets and the players in a private repo) → **Create**.
 3. **Add file → Upload files** and drag in everything from this folder, including the `.github` folder.
    - If the `.github` folder doesn't upload (some systems hide folders starting with a dot): **Add file → Create new file**, type the name `.github/workflows/tracker.yml` and paste the contents of that file.
 
 > **Private repo?** It also works, but private repos get 2,000 free minutes a month. Change the schedule in `.github/workflows/tracker.yml` to every 30 minutes: `cron: "4-59/30 * * * *"`.
 
 ### 4. GitHub: add the secrets
-Repository → **Settings → Secrets and variables → Actions → New repository secret**, twice:
+Repository → **Settings → Secrets and variables → Actions → New repository secret**, three times:
 
 | Name | Value |
 |---|---|
 | `RIOT_API_KEY` | your Riot key (`RGAPI-…`) |
 | `DISCORD_WEBHOOK_URL` | the webhook URL from step 1 |
+| `STATE_KEY` | any long random text, e.g. the output of `python -c "import secrets; print(secrets.token_hex(32))"`. It keeps `state.json` from revealing who you track. If you change it, every player is registered again from scratch |
 
 ### 5. Choose the players
-Edit `config.yaml` (click it on GitHub → ✏️ pencil → **Commit changes**):
-
-```yaml
-players:
-  - name: "MyFriend"
-    tag: "EUW"
-  - name: "OtherFriend"
-    tag: "1234"
-```
+Create the private repo with your `players.yaml` and, if you want, your memes: see [Private repo](#private-repo-players-and-memes).
 
 ### 6. First run
 1. Repository → **Actions** tab → enable workflows if asked.
 2. **LoL tracker → Run workflow**. The first run **only registers** the players (their previous games are not posted, to avoid flooding the channel).
-3. Want to see a card right now? **Run workflow** again and type a Riot ID in *“post this player's latest match”*.
+3. Want to see a card right now? **Run workflow** again and type a player's number (1 = the first in `players.yaml`) in *“post this player's latest match”*.
 
 From then on it runs on its own every ~5 minutes.
 
 ---
 
 ## Configuration (`config.yaml`)
+The settings for everyone. `default_region`, `queues`, `show`, `skip_remakes` and `messages` are defaults: each player can set their own in [`players.yaml`](#playersyaml).
 
 | Option | Values | What it does |
 |---|---|---|
-| `players` | list of `name` / `tag` / optional `region` | Who to track |
 | `default_region` | `euw`, `eune`, `na`, `kr`… | Region when a player has none |
 | `queues` | `soloq`, `flex` (also `normal`, `quickplay`, `aram`) | Which queues to watch |
 | `show` | `wins` / `losses` / `both` | Which results get posted |
@@ -77,21 +71,65 @@ From then on it runs on its own every ~5 minutes.
 | `messages` | lists of texts | Message posted with the card; one is picked at random. Variables: `{player}` `{queue}` `{champion}` `{kda}` `{position}` `{duration}` |
 | `mentions` | `roles` / `users`: lists of Discord IDs | Pinged with every card; nobody else gets notified (see [Notifications](#notifications)) |
 
-## Memes
-Memes live in a separate **private** repository, so they aren't part of this project when someone clones or downloads it. The workflow fetches it on every run with a read-only deploy key.
+## Private repo (players and memes)
+The players and the memes live in a separate **private** repository, so nobody who looks at or downloads this project can see who you track. The workflow fetches it on every run with a read-only deploy key.
 
-1. Create a **private** repository (e.g. `lol-tracker-memes`) with two folders, `win/` and `loss/`, and upload your images there (**Add file → Upload files**).
-2. Create a key pair on your PC: `ssh-keygen -t ed25519 -N "" -f memes_key`.
-3. Memes repo → **Settings → Deploy keys → Add deploy key**: paste the contents of `memes_key.pub` and leave *Allow write access* unchecked.
+1. Create a **private** repository (e.g. `lol-tracker-private`) with:
+   ```
+   players.yaml    who to track (see below)
+   win/            memes for wins (optional)
+   loss/           memes for losses (optional)
+   ```
+   **Add file → Create new file** for `players.yaml`; **Add file → Upload files** for the images.
+2. Create a key pair on your PC: `ssh-keygen -t ed25519 -N "" -f private_repo_key`.
+3. Private repo → **Settings → Deploy keys → Add deploy key**: paste the contents of `private_repo_key.pub` and leave *Allow write access* unchecked.
 4. This repo → **Settings → Secrets and variables → Actions**:
-   - Secret `MEMES_SSH_KEY`: the full contents of `memes_key` (the private key, `-----BEGIN` to `-----END`).
-   - **Variables** tab → `MEMES_REPO`: `YourUser/lol-tracker-memes`.
+   - Secret `PRIVATE_REPO_KEY`: the full contents of `private_repo_key` (the private key, `-----BEGIN` to `-----END`).
+   - **Variables** tab → `PRIVATE_REPO`: `YourUser/lol-tracker-private`.
 5. Delete both key files from your PC.
 
-- If `MEMES_REPO` isn't set (or the fetch fails), cards are posted without memes.
+If the private repo can't be fetched, or it has no `players.yaml`, the run fails so you notice. Without `PRIVATE_REPO`, players are read from a `players:` list in `config.yaml` (which anyone can see) and cards are posted without memes.
+
+### players.yaml
+Edit it on GitHub like any file (✏️ pencil → **Commit changes**); changes apply on the next check. Only `name` and `tag` (the Riot ID, `Name#TAG`) are required, and anything a player leaves out comes from `config.yaml`:
+
+```yaml
+players:
+  - name: "MyFriend"
+    tag: "EUW"                  # everything from config.yaml
+
+  - name: "OtherFriend"
+    tag: "1234"
+    queues: [soloq]             # only their SoloQ games
+    show: losses                # only their losses
+    messages:
+      loss:                     # their own texts for losses; wins use config.yaml's
+        - "💀 **{player}** strikes again with {champion} ({kda})"
+```
+
+| Setting | Values | When left out |
+|---|---|---|
+| `region` | `euw`, `eune`, `na`, `kr`… | `default_region` |
+| `queues` | `soloq`, `flex`, `normal`, `quickplay`, `aram` | `queues` |
+| `show` | `wins` / `losses` / `both` | `show` |
+| `skip_remakes` | `true` / `false` | `skip_remakes` |
+| `messages` | `win` and/or `loss`, each a list of texts | the `config.yaml` texts, for wins and losses separately |
+
+- Players are numbered in the order of the list (player 1, player 2…). That's how the public logs refer to them, and the number you type to test one.
+- A misspelt setting stops the run with an error that names the player and the setting.
+
+### Memes
 - **PNG / JPG / WEBP / GIF**. The meme sits in a square frame next to the title, cropped to fit, so a centred subject works best.
 - With an animated GIF or WEBP the whole card is posted as an animated GIF. GIFs only have 256 colours, so its background looks slightly grainier than the usual PNG. If it would go over Discord's 10 MB limit, the card is sent still.
-- One is picked at random each time. Empty folder = no meme.
+- One is picked at random each time. Empty or missing folder = no meme, and no frame on the card.
+
+## Privacy
+This repo is public: anyone can see the code, `config.yaml`, `state.json` and the Actions logs. None of them say who you track:
+- The players and their settings are only in the private repo.
+- `state.json` only holds codes made with `STATE_KEY`, not Riot IDs or match IDs.
+- The logs say "player 1", "player 2"… instead of names, and the test input takes that number.
+
+What can still be worked out: how many players are tracked (the entries in `state.json`) and when their games end (the times of the "Update tracker state" commits). The Discord channel shows the names, of course.
 
 ## Notifications
 Posts don't ping anyone unless you list them in `mentions`. To notify only some people:
@@ -111,20 +149,20 @@ pip install -r requirements.txt
 python -m tracker --demo          # renders sample cards into output/ (no keys needed)
 ```
 
-To test with real data, create a `.env` file next to `config.yaml` (it's ignored by git):
+To test with real data, clone your private repo into `private/` (it's ignored by git), so the tracker finds the players and memes: `git clone <private repo URL> private`. Then create a `.env` file next to `config.yaml` (also ignored by git). `STATE_KEY` must be the same as the secret, and is only needed for a check that isn't a `--dry-run`:
 
 ```
 RIOT_API_KEY=RGAPI-...
 DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/...
+STATE_KEY=...
 ```
 
 ```bash
-python -m tracker --test "Name#TAG" --dry-run   # renders that player's latest match into output/
-python -m tracker --test "Name#TAG"             # posts it to Discord
+python -m tracker --test 1 --dry-run            # renders player 1's latest match into output/
+python -m tracker --test "Name#TAG" --dry-run   # same, for any Riot ID
+python -m tracker --test 1                      # posts it to Discord
 python -m tracker --dry-run                     # full check without posting
 ```
-
-To use your memes locally, clone the private memes repo into `memes/` (it's ignored by git): `git clone <memes repo URL> memes`.
 
 ## Good to know
 - **Timing:** GitHub runs scheduled jobs "best effort", so posts can arrive a few minutes after the game ends.
@@ -132,11 +170,12 @@ To use your memes locally, clone the private memes repo into `memes/` (it's igno
 - **Expired key:** if the run fails with *"Riot rejected the API key"*, your development key expired. Generate a new one or use a personal key.
 - **Duo games:** if two tracked players are in the same game, each gets their own card.
 - **Rank:** it's read when the card is posted, so it shows the LP right after the game. Rank emblems come from [CommunityDragon](https://communitydragon.org) (the League client's own images); if they can't be downloaded, the tier and LP are shown without the emblem.
-- `state.json` stores the IDs of the matches already processed. Don't edit it; delete it to start over.
+- `state.json` stores the matches already processed, as codes made with `STATE_KEY`. Don't edit it; delete it to start over.
 
 ## Project structure
 ```
-config.yaml                 settings (edit this)
+config.yaml                 settings for everyone (edit this)
+private/                    your private repo, cloned here for local runs (ignored by git)
 tracker/                    code
   __main__.py               entry point and main logic
   riot.py                   Riot API + Data Dragon clients

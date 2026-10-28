@@ -3,13 +3,15 @@
 Usage:
   python -m tracker                         normal check (what GitHub Actions runs)
   python -m tracker --demo                  render sample cards into output/ without Riot or Discord
-  python -m tracker --test "Name#TAG"       post that player's latest match (to check the setup works)
+  python -m tracker --test 1                post the latest match of player 1 (to check the setup works)
+  python -m tracker --test "Name#TAG"       same, for any Riot ID
   python -m tracker --dry-run               do everything, but save cards to output/ instead of sending
 """
 
 from __future__ import annotations
 
 import argparse
+import hmac
 import json
 import logging
 import os
@@ -28,8 +30,12 @@ from .riot import QUEUES, RANKED_QUEUES, DataDragon, InvalidKey, NotFound, RiotA
 
 ROOT = Path(__file__).resolve().parent.parent
 STATE_FILE = ROOT / "state.json"
+PLAYERS_FILE = ROOT / "private" / "players.yaml"
 OUTPUT = ROOT / "output"
 MAX_SEEN = 100
+
+# What a player can set in players.yaml; anything they leave out comes from config.yaml
+PLAYER_SETTINGS = ("region", "queues", "show", "skip_remakes", "messages")
 
 log = logging.getLogger("tracker")
 
@@ -48,7 +54,6 @@ def load_env() -> None:
 
 def load_config(path: Path) -> dict:
     cfg = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
-    cfg["players"] = cfg.get("players") or []
     cfg.setdefault("default_region", "euw")
     cfg.setdefault("queues", ["soloq", "flex"])
     cfg.setdefault("show", "both")
@@ -58,26 +63,12 @@ def load_config(path: Path) -> dict:
     cfg.setdefault("matches_per_check", 5)
     cfg["memes"] = cfg.get("memes") or {}
     cfg["memes"].setdefault("enabled", True)
-    cfg["messages"] = cfg.get("messages") or {}
-    cfg["messages"].setdefault("win", ["🏆 **{player}** — {champion} ({kda})"])
-    cfg["messages"].setdefault("loss", ["💀 **{player}** — {champion} ({kda})"])
-
-    show = str(cfg["show"]).lower().strip()
-    if show not in ("wins", "losses", "both"):
-        sys.exit(f"config.yaml: 'show' must be wins, losses or both (currently '{show}')")
-    cfg["show"] = show
-
-    queue_ids = []
-    for q in cfg["queues"]:
-        q = str(q).lower().strip()
-        if q not in QUEUES:
-            sys.exit(f"config.yaml: unknown queue '{q}'. Options: {', '.join(QUEUES)}")
-        queue_ids.append(QUEUES[q])
-    cfg["_queue_ids"] = queue_ids
-
-    for p in cfg["players"]:
-        if not p.get("name") or not p.get("tag"):
-            sys.exit(f"config.yaml: every player needs a name and a tag (problem with: {p})")
+    cfg["messages"] = {"win": ["🏆 **{player}** — {champion} ({kda})"],
+                       "loss": ["💀 **{player}** — {champion} ({kda})"],
+                       **_messages(cfg.get("messages"), "config.yaml")}
+    cfg["show"] = _show(cfg["show"], "config.yaml")
+    cfg["_queue_ids"] = _queue_ids(cfg["queues"], "config.yaml")
+    cfg["players"] = [_player(p, f"player {n}", cfg) for n, p in enumerate(_players(cfg), 1)]
 
     cfg["mentions"] = cfg.get("mentions") or {}
     for kind in ("roles", "users"):
@@ -86,6 +77,63 @@ def load_config(path: Path) -> dict:
             sys.exit(f"config.yaml: mentions.{kind} must be Discord IDs (numbers), e.g. \"123456789012345678\"")
         cfg["mentions"][kind] = ids
     return cfg
+
+
+def _players(cfg: dict) -> list:
+    """The players from the private repo, or from config.yaml (public) when there's no private repo."""
+    if PLAYERS_FILE.exists():
+        data = yaml.safe_load(PLAYERS_FILE.read_text(encoding="utf-8")) or {}
+        return data if isinstance(data, list) else data.get("players") or []  # with or without "players:"
+    if os.environ.get("GITHUB_ACTIONS") and os.environ.get("PRIVATE_REPO"):
+        sys.exit("players.yaml is missing: the private repo couldn't be fetched, or it has no players.yaml.")
+    if cfg.get("players"):
+        log.warning("Players are read from config.yaml, which anyone can see. "
+                    "Move them to players.yaml in your private repo (see README).")
+    return cfg.get("players") or []
+
+
+def _player(p: dict, label: str, cfg: dict) -> dict:
+    """A player's settings: what they set in players.yaml, and the config.yaml defaults for the rest."""
+    if not isinstance(p, dict) or not p.get("name") or not p.get("tag"):
+        sys.exit(f"{label} needs a name and a tag")
+    unknown = sorted(set(p) - {"name", "tag", *PLAYER_SETTINGS})
+    if unknown:
+        sys.exit(f"{label}: unknown setting '{unknown[0]}'. Options: {', '.join(PLAYER_SETTINGS)}")
+    return {
+        "label": label,  # how logs refer to them: they're public, so no names
+        "name": str(p["name"]).strip(),
+        "tag": str(p["tag"]).strip().lstrip("#"),
+        "region": str(p.get("region") or cfg["default_region"]),
+        "queue_ids": _queue_ids(p["queues"], label) if "queues" in p else cfg["_queue_ids"],
+        "show": _show(p["show"], label) if "show" in p else cfg["show"],
+        "skip_remakes": p.get("skip_remakes", cfg["skip_remakes"]),
+        "messages": {**cfg["messages"], **_messages(p.get("messages"), label)},  # win and loss separately
+    }
+
+
+def _show(value, where: str) -> str:
+    show = str(value).lower().strip()
+    if show not in ("wins", "losses", "both"):
+        sys.exit(f"{where}: 'show' must be wins, losses or both (currently '{show}')")
+    return show
+
+
+def _queue_ids(names, where: str) -> list[int]:
+    ids = []
+    for q in [names] if isinstance(names, str) else names or []:
+        q = str(q).lower().strip()
+        if q not in QUEUES:
+            sys.exit(f"{where}: unknown queue '{q}'. Options: {', '.join(QUEUES)}")
+        ids.append(QUEUES[q])
+    return ids
+
+
+def _messages(value, where: str) -> dict[str, list[str]]:
+    """The win / loss texts that are set, each as a list (a single text is fine too)."""
+    value = value or {}
+    if not isinstance(value, dict) or set(value) - {"win", "loss"}:
+        sys.exit(f"{where}: 'messages' can only have win and loss, each with a list of texts")
+    return {result: [texts] if isinstance(texts, str) else list(texts) for result, texts in value.items() if texts}
 
 
 def load_state() -> dict:
@@ -108,35 +156,49 @@ def player_key(name: str, tag: str) -> str:
     return f"{name}#{tag}".lower()
 
 
-def player_region(name: str, tag: str, cfg: dict) -> str:
+def _private(value: str) -> str:
+    """value, unrecognisable without STATE_KEY: state.json is public and mustn't reveal who is tracked."""
+    return hmac.new(os.environ.get("STATE_KEY", "").encode(), value.encode(), "sha256").hexdigest()[:16]
+
+
+def find_player(target: str, cfg: dict) -> dict:
+    """A tracked player by number (1, 2…) or Riot ID. A Riot ID that isn't tracked gets the defaults."""
+    target = target.strip()
+    if target.isdigit():
+        if not 1 <= int(target) <= len(cfg["players"]):
+            sys.exit(f"There's no player {target}: there are {len(cfg['players'])}.")
+        return cfg["players"][int(target) - 1]
+    if "#" not in target:
+        sys.exit("Use the player's number (1, 2…) or the Name#TAG format")
+    name, tag = (x.strip() for x in target.rsplit("#", 1))
     for p in cfg["players"]:
-        if player_key(str(p["name"]), str(p["tag"])) == player_key(name, tag):
-            return str(p.get("region") or cfg["default_region"])
-    return str(cfg["default_region"])
+        if player_key(p["name"], p["tag"]) == player_key(name, tag):
+            return p
+    return _player({"name": name, "tag": tag}, "the test player", cfg)
 
 
 # ───────────────────────── posting ─────────────────────────
 
-def passes_filter(m: MatchData, cfg: dict) -> bool:
-    if m.remake and cfg["skip_remakes"]:
+def passes_filter(m: MatchData, p: dict) -> bool:
+    if m.remake and p["skip_remakes"]:
         return False
-    if cfg["show"] == "wins":
+    if p["show"] == "wins":
         return m.win
-    if cfg["show"] == "losses":
+    if p["show"] == "losses":
         return not m.win
     return True
 
 
-def message_text(m: MatchData, cfg: dict) -> str:
-    t = i18n.get(cfg["language"])
-    template = random.choice(cfg["messages"][m.result])
+def message_text(m: MatchData, messages: dict, language: str) -> str:
+    t = i18n.get(language)
+    template = random.choice(messages[m.result])
     values = defaultdict(str, player=m.riot_id, queue=t["queue_short"].get(m.queue_id, t["game"]),
                          champion=m.champion, kda=m.kda_text,
                          position=t["positions"].get(m.position, "?"), duration=m.duration)
     return template.format_map(values)
 
 
-def attach_ranks(matches: list[MatchData], api: RiotAPI, puuid: str, region: str) -> None:
+def attach_ranks(matches: list[MatchData], api: RiotAPI, puuid: str, region: str, who: str) -> None:
     """Add the player's current rank to their ranked matches (one request; without it if Riot fails)."""
     ranked = [m for m in matches if m.queue_id in RANKED_QUEUES]
     if not ranked:
@@ -144,7 +206,7 @@ def attach_ranks(matches: list[MatchData], api: RiotAPI, puuid: str, region: str
     try:
         entries = api.league_entries(puuid, region)
     except RiotError as e:
-        log.warning("Could not read the rank of %s (%s); posting without it.", ranked[0].riot_id, e)
+        log.warning("Could not read the rank of %s (%s); posting without it.", who, e)
         return
     for m in ranked:
         m.rank = rank_for(entries, m.queue_id)
@@ -157,9 +219,9 @@ def render(m: MatchData, cfg: dict, dd: DataDragon) -> tuple[str, bytes]:
     return banner.encode()
 
 
-def post(m: MatchData, cfg: dict, dd: DataDragon, dry_run: bool) -> None:
+def post(m: MatchData, p: dict, cfg: dict, dd: DataDragon, dry_run: bool) -> None:
     filename, data = render(m, cfg, dd)
-    text = message_text(m, cfg)
+    text = message_text(m, p["messages"], cfg["language"])
     if dry_run:
         OUTPUT.mkdir(exist_ok=True)
         path = OUTPUT / f"{m.match_id}_{m.player}{Path(filename).suffix}"
@@ -168,7 +230,7 @@ def post(m: MatchData, cfg: dict, dd: DataDragon, dry_run: bool) -> None:
         return
     webhook.send(os.environ["DISCORD_WEBHOOK_URL"], text, filename, data,
                  cfg["mentions"]["roles"], cfg["mentions"]["users"])
-    log.info("Sent: %s", text)
+    log.info("Sent the %s card of %s.", m.result, p["label"])
 
 
 # ───────────────────────── modes ─────────────────────────
@@ -179,88 +241,86 @@ def check(cfg: dict, api: RiotAPI, dd: DataDragon, dry_run: bool) -> int:
     problems = 0
 
     if not cfg["players"]:
-        log.warning("No players in config.yaml — nothing to do.")
+        log.warning("No players to track (players.yaml in the private repo) — nothing to do.")
 
     for p in cfg["players"]:
-        name, tag = str(p["name"]).strip(), str(p["tag"]).strip().lstrip("#")
-        region = str(p.get("region") or cfg["default_region"])
-        entry = state["players"].setdefault(player_key(name, tag), {"seen": [], "initialized": False})
+        name, tag, region, who = p["name"], p["tag"], p["region"], p["label"]
+        entry = state["players"].setdefault(_private(player_key(name, tag)), {"seen": [], "initialized": False})
 
         try:
             puuid = api.account(name, tag, region)["puuid"]
             ids = []
-            for queue in cfg["_queue_ids"]:
+            for queue in p["queue_ids"]:
                 ids += api.match_ids(puuid, region, queue, int(cfg["matches_per_check"]))
         except InvalidKey:
             raise
         except NotFound:
-            log.error("Riot ID %s#%s doesn't exist in %s. Check config.yaml.", name, tag, region)
+            log.error("The Riot ID of %s doesn't exist in %s. Check players.yaml.", who, region)
             problems += 1
             continue
         except RiotError as e:
-            log.error("Error looking up %s#%s: %s", name, tag, e)
+            log.error("Error looking up %s: %s", who, e)
             problems += 1
             continue
 
+        hidden = {i: _private(i) for i in ids}  # state.json only keeps these
         seen = set(entry["seen"])
         if not entry["initialized"]:
             # First time we see this player: don't post their history, just remember it.
-            entry["seen"] = _remember(entry["seen"], ids)
+            entry["seen"] = _remember(entry["seen"], list(hidden.values()))
             entry["initialized"] = True
-            log.info("%s#%s added. Their matches will be posted from now on.", name, tag)
+            log.info("%s added. Their matches will be posted from now on.", who)
             continue
 
         new_matches = []
-        for mid in dict.fromkeys(i for i in ids if i not in seen):
+        for mid in dict.fromkeys(i for i in ids if hidden[i] not in seen):
             try:
                 md = parse(api.match(mid, region), puuid, dd, cfg["timezone"])
             except RiotError as e:
-                log.error("Could not read match %s: %s", mid, e)
+                log.error("Could not read a match of %s: %s", who, e)
                 problems += 1
                 continue
             if md:
                 new_matches.append(md)
             else:
-                seen.add(mid)
+                seen.add(hidden[mid])
 
-        attach_ranks(new_matches, api, puuid, region)
+        attach_ranks(new_matches, api, puuid, region, who)
         for md in sorted(new_matches, key=lambda x: x.ended_at):  # oldest first
-            if passes_filter(md, cfg):
+            if passes_filter(md, p):
                 try:
-                    post(md, cfg, dd, dry_run)
+                    post(md, p, cfg, dd, dry_run)
                 except Exception as e:  # noqa: BLE001
-                    log.error("Could not post %s: %s", md.match_id, e)
+                    log.error("Could not post a match of %s: %s", who, e)
                     problems += 1
                     break  # it will be retried on the next run
             else:
-                log.info("Skipping %s for %s (show: %s%s).", md.result, md.riot_id, cfg["show"],
+                log.info("Skipping a %s of %s (show: %s%s).", md.result, who, p["show"],
                          ", remake" if md.remake else "")
-            seen.add(md.match_id)
+            seen.add(hidden[md.match_id])
 
-        entry["seen"] = _remember(entry["seen"], [i for i in ids if i in seen])
+        entry["seen"] = _remember(entry["seen"], [hidden[i] for i in ids if hidden[i] in seen])
 
     if not dry_run:
         save_state(state)
     return problems
 
 
-def test(riot_id: str, cfg: dict, api: RiotAPI, dd: DataDragon, dry_run: bool) -> None:
-    if "#" not in riot_id:
-        sys.exit("Use the Name#TAG format")
-    name, tag = (x.strip() for x in riot_id.rsplit("#", 1))
-    region = player_region(name, tag, cfg)
-    puuid = api.account(name, tag, region)["puuid"]
+def test(target: str, cfg: dict, api: RiotAPI, dd: DataDragon, dry_run: bool) -> None:
+    p = find_player(target, cfg)
+    region = p["region"]
+    puuid = api.account(p["name"], p["tag"], region)["puuid"]
     ids = []
-    for queue in cfg["_queue_ids"]:
+    for queue in p["queue_ids"]:
         ids += api.match_ids(puuid, region, queue, 1)
     matches = [parse(api.match(i, region), puuid, dd, cfg["timezone"]) for i in ids]
     matches = [m for m in matches if m]
     if not matches:
-        sys.exit(f"{riot_id} has no recent matches in the configured queues.")
+        sys.exit(f"{p['label']} has no recent matches in their queues.")
     latest = max(matches, key=lambda x: x.ended_at)
-    log.info("Test: latest match of %s (%s)", riot_id, latest.result)
-    attach_ranks([latest], api, puuid, region)
-    post(latest, cfg, dd, dry_run)
+    log.info("Test: latest match of %s (%s)", p["label"], latest.result)
+    attach_ranks([latest], api, puuid, region, p["label"])
+    post(latest, p, cfg, dd, dry_run)
 
 
 def demo(cfg: dict) -> None:
@@ -283,15 +343,15 @@ def demo(cfg: dict) -> None:
         filename, data = render(m, cfg, dd)
         path = OUTPUT / f"demo_{m.result}{Path(filename).suffix}"
         path.write_bytes(data)
-        print(f"✔ {path.relative_to(ROOT)}\n  Message: {message_text(m, cfg)}")
+        print(f"✔ {path.relative_to(ROOT)}\n  Message: {message_text(m, cfg['messages'], cfg['language'])}")
 
 
 def main() -> None:
     logging.basicConfig(level=logging.INFO, format="%(message)s")
     ap = argparse.ArgumentParser(description="LoL match tracker → Discord")
     ap.add_argument("--demo", action="store_true", help="render sample cards without Riot or Discord")
-    ap.add_argument("--test", metavar="NAME#TAG", default=os.environ.get("TEST_RIOT_ID") or None,
-                    help="post that player's latest match")
+    ap.add_argument("--test", metavar="N|NAME#TAG", default=os.environ.get("TEST_PLAYER") or None,
+                    help="post the latest match of player N (1, 2…) or of any Riot ID")
     ap.add_argument("--dry-run", action="store_true", help="save cards to output/ instead of sending them")
     ap.add_argument("--config", default=str(ROOT / "config.yaml"))
     args = ap.parse_args()
@@ -308,6 +368,8 @@ def main() -> None:
         sys.exit("RIOT_API_KEY is missing (GitHub secret or .env file).")
     if not args.dry_run and not os.environ.get("DISCORD_WEBHOOK_URL", "").strip():
         sys.exit("DISCORD_WEBHOOK_URL is missing (GitHub secret or .env file).")
+    if os.environ.get("GITHUB_ACTIONS") and not os.environ.get("STATE_KEY"):
+        log.warning("STATE_KEY is missing: without it, state.json can reveal who is tracked (see README).")
 
     api = RiotAPI(key)
     dd = DataDragon(i18n.LOCALES.get(cfg["language"], "en_US"))

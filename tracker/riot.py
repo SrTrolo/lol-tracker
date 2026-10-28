@@ -77,13 +77,16 @@ class RiotAPI:
         self.session.headers["X-Riot-Token"] = api_key.strip()
 
     def _get(self, host: str, path: str, params: dict | None = None):
-        """GET from a regional cluster (e.g. "europe") or a platform (e.g. "euw1")."""
+        """GET from a regional cluster (e.g. "europe") or a platform (e.g. "euw1").
+
+        Errors never include the path: it has the Riot ID or puuid, and the logs on GitHub are public.
+        """
         url = f"https://{host}.api.riotgames.com{path}"
         for attempt in range(5):
             try:
                 r = self.session.get(url, params=params, timeout=20)
             except requests.RequestException as e:
-                log.warning("Network error talking to Riot (%s), retrying…", e)
+                log.warning("Network error talking to Riot (%s), retrying…", type(e).__name__)
                 time.sleep(2 * (attempt + 1))
                 continue
             if r.status_code == 429:  # rate limited: wait as long as Riot says
@@ -100,10 +103,11 @@ class RiotAPI:
                     "generate a new one and update the RIOT_API_KEY secret."
                 )
             if r.status_code == 404:
-                raise NotFound(path)
-            r.raise_for_status()
+                raise NotFound("Riot answered 404 (not found)")
+            if r.status_code >= 400:
+                raise RiotError(f"Riot answered HTTP {r.status_code}")
             return r.json()
-        raise RiotError(f"Riot did not respond properly after several attempts: {path}")
+        raise RiotError("Riot did not respond properly after several attempts")
 
     def account(self, name: str, tag: str, region: str) -> dict:
         cluster = cluster_for(region)

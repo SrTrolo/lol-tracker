@@ -3,4 +3,4 @@ output/
 __pycache__/
 *.pyc
 .venv/
-memes/
+private/

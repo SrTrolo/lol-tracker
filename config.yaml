@@ -4,20 +4,12 @@
 #  Changes apply on the next check.
 # ─────────────────────────────────────────────────────────────
 
-# Players to track. "name" and "tag" form the Riot ID (Name#TAG).
-# "region" is optional; default_region is used when it's missing.
-# Valid regions: euw, eune, tr, ru, me, na, br, lan, las, kr, jp, oce, sg, tw, vn, ph, th
-players:
-  - name: "Player1"
-    tag: "EUW"
-  - name: "Player2"
-    tag: "EUW"
-  - name: "Player3"
-    tag: "EUW"
-  # - name: "AnotherFriend"
-  #   tag: "1234"
-  #   region: euw
+# The players to track are in players.yaml in your private repo, so nobody
+# can see who you track (see README → Private repo).
+# Each player can set their own region, queues, show, skip_remakes and
+# messages there; the values below are used for whatever they leave out.
 
+# Valid regions: euw, eune, tr, ru, me, na, br, lan, las, kr, jp, oce, sg, tw, vn, ph, th
 default_region: euw
 
 # Queues to watch. For now: soloq, flex
@@ -42,7 +34,7 @@ language: es
 matches_per_check: 5
 
 # Memes: PNG / JPG / WEBP / GIF files in the win/ and loss/ folders of your
-# private memes repo (see README → Memes).
+# private repo (see README → Private repo).
 # A random one is shown in a frame next to the title. Animated GIF / WEBP
 # memes turn the whole card into an animated GIF.
 # If the folder is empty, the card is sent without a meme.
@@ -57,7 +49,8 @@ mentions:
   roles: []
   users: []
 
-# Message text. One is picked at random.
+# Message text. One is picked at random. A player with their own win or loss
+# texts in players.yaml uses those instead.
 # Variables: {player} {queue} {champion} {kda} {position} {duration}
 messages:
   win:

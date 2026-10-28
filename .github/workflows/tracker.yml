@@ -6,8 +6,8 @@ on:
     - cron: "2-59/5 * * * *"
   workflow_dispatch:
     inputs:
-      test_riot_id:
-        description: "Optional: post this player's latest match right now (Name#TAG)"
+      test_player:
+        description: "Optional: post this player's latest match right now (their number in players.yaml: 1, 2…)"
         required: false
         default: ""
 
@@ -25,15 +25,15 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-      # Memes live in a separate private repo (see README → Memes)
-      - name: Fetch memes
-        if: vars.MEMES_REPO != ''
-        continue-on-error: true   # without memes the card is still posted
+      # Players and memes live in a separate private repo (see README → Private repo)
+      - name: Fetch private repo
+        if: vars.PRIVATE_REPO != ''
+        continue-on-error: true   # the tracker itself stops if players.yaml is missing
         uses: actions/checkout@v6
         with:
-          repository: ${{ vars.MEMES_REPO }}
-          ssh-key: ${{ secrets.MEMES_SSH_KEY }}
-          path: memes
+          repository: ${{ vars.PRIVATE_REPO }}
+          ssh-key: ${{ secrets.PRIVATE_REPO_KEY }}
+          path: private
           persist-credentials: false
 
       - uses: actions/setup-python@v6
@@ -48,7 +48,9 @@ jobs:
         env:
           RIOT_API_KEY: ${{ secrets.RIOT_API_KEY }}
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
-          TEST_RIOT_ID: ${{ inputs.test_riot_id }}
+          STATE_KEY: ${{ secrets.STATE_KEY }}
+          PRIVATE_REPO: ${{ vars.PRIVATE_REPO }}
+          TEST_PLAYER: ${{ inputs.test_player }}
         run: python -m tracker
 
       - name: Save state
