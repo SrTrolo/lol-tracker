@@ -74,6 +74,8 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           MAX_FAILURES: 3
         run: |
+          # A run that started before an earlier one turned the workflow off has nothing left to do
+          [ "$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/tracker.yml" --jq .state)" = active ] || exit 0
           # This run is still in progress, so the list only has the earlier ones (newest first)
           earlier=$((MAX_FAILURES - 1))
           failed=$(gh run list --workflow tracker.yml --status completed --limit 20 --json conclusion \
