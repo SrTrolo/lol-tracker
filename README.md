@@ -88,7 +88,7 @@ The players and the memes live in a separate **private** repository, so nobody w
    - **Variables** tab → `PRIVATE_REPO`: `YourUser/lol-tracker-private`.
 5. Delete both key files from your PC.
 
-If the private repo can't be fetched, or it has no `players.yaml`, the run fails so you notice. Without `PRIVATE_REPO`, players are read from a `players:` list in `config.yaml` (which anyone can see) and cards are posted without memes.
+If the private repo can't be fetched (after one retry a minute later), or it has no `players.yaml`, the run fails so you notice. Without `PRIVATE_REPO`, players are read from a `players:` list in `config.yaml` (which anyone can see) and cards are posted without memes.
 
 ### players.yaml
 Edit it on GitHub like any file (✏️ pencil → **Commit changes**); changes apply on the next check. Only `name` and `tag` (the Riot ID, `Name#TAG`) are required, and anything a player leaves out comes from `config.yaml`:

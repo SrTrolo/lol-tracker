@@ -28,7 +28,23 @@ jobs:
 
       # Players and memes live in a separate private repo (see README → Private repo)
       - name: Fetch private repo
+        id: private
         if: vars.PRIVATE_REPO != ''
+        continue-on-error: true   # the tracker itself stops if players.yaml is missing
+        uses: actions/checkout@v6
+        with:
+          repository: ${{ vars.PRIVATE_REPO }}
+          ssh-key: ${{ secrets.PRIVATE_REPO_KEY }}
+          path: private
+          persist-credentials: false
+
+      # A GitHub outage can make the fetch fail for a while: wait a minute and try once more
+      - name: Wait before retrying
+        if: steps.private.outcome == 'failure'
+        run: sleep 60
+
+      - name: Fetch private repo (retry)
+        if: steps.private.outcome == 'failure'
         continue-on-error: true   # the tracker itself stops if players.yaml is missing
         uses: actions/checkout@v6
         with:
